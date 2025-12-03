@@ -71,7 +71,7 @@ class SPB_Admin_Menu {
         // This will be expanded in specific UI classes
     }
 
-    public function render_admin_page() {
+public function render_admin_page() {
     // Get current tab
     $current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'api-keys';
     
@@ -116,8 +116,8 @@ class SPB_Admin_Menu {
                     break;
                     
                 case 'created-pages':
-                    // We'll create this next
-                    echo '<div class="spb-card"><h3>Created Pages - Coming Soon</h3></div>';
+                    $ui = SPB_Pages_List_UI::get_instance();
+                    $ui->render_page();
                     break;
                     
                 case 'settings':
@@ -126,8 +126,8 @@ class SPB_Admin_Menu {
                     break;
                     
                 case 'documentation':
-                    // We'll create this next
-                    echo '<div class="spb-card"><h3>Documentation - Coming Soon</h3></div>';
+                    $ui = SPB_Documentation_UI::get_instance();
+                    $ui->render_page();
                     break;
                     
                 default:
