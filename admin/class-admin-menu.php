@@ -70,7 +70,7 @@ class SPB_Admin_Menu {
         // We'll handle API key generation, settings save, etc. here
         // This will be expanded in specific UI classes
     }
-    
+
     public function render_admin_page() {
     // Get current tab
     $current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'api-keys';
@@ -138,4 +138,5 @@ class SPB_Admin_Menu {
         </div>
     </div>
     <?php
+}
 }
