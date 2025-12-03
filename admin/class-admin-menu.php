@@ -72,42 +72,70 @@ class SPB_Admin_Menu {
     }
     
     public function render_admin_page() {
-        // Get current tab
-        $current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'api-keys';
-        $tabs = array(
-            'api-keys' => __('API Keys', 'simple-page-builder'),
-            'activity-log' => __('Activity Log', 'simple-page-builder'),
-            'created-pages' => __('Created Pages', 'simple-page-builder'),
-            'settings' => __('Settings', 'simple-page-builder'),
-            'documentation' => __('Documentation', 'simple-page-builder')
-        );
+    // Get current tab
+    $current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'api-keys';
+    
+    ?>
+    <div class="wrap spb-admin-wrap">
+        <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
         
-        ?>
-        <div class="wrap spb-admin-wrap">
-            <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-            
-            <nav class="nav-tab-wrapper">
-                <?php foreach ($tabs as $tab => $name): ?>
-                    <a href="?page=simple-page-builder&tab=<?php echo esc_attr($tab); ?>"
-                       class="nav-tab <?php echo $current_tab === $tab ? 'nav-tab-active' : ''; ?>">
-                        <?php echo esc_html($name); ?>
-                    </a>
-                <?php endforeach; ?>
-            </nav>
-            
-            <div class="spb-admin-content">
-                <?php
-                // Load the appropriate template
-                $template_file = SPB_PLUGIN_DIR . "templates/{$current_tab}.php";
-                
-                if (file_exists($template_file)) {
-                    include $template_file;
-                } else {
-                    include SPB_PLUGIN_DIR . 'templates/api-keys.php';
-                }
-                ?>
-            </div>
+        <nav class="nav-tab-wrapper">
+            <a href="?page=simple-page-builder&tab=api-keys"
+               class="nav-tab <?php echo $current_tab === 'api-keys' ? 'nav-tab-active' : ''; ?>">
+                <?php _e('API Keys', 'simple-page-builder'); ?>
+            </a>
+            <a href="?page=simple-page-builder&tab=activity-log"
+               class="nav-tab <?php echo $current_tab === 'activity-log' ? 'nav-tab-active' : ''; ?>">
+                <?php _e('Activity Log', 'simple-page-builder'); ?>
+            </a>
+            <a href="?page=simple-page-builder&tab=created-pages"
+               class="nav-tab <?php echo $current_tab === 'created-pages' ? 'nav-tab-active' : ''; ?>">
+                <?php _e('Created Pages', 'simple-page-builder'); ?>
+            </a>
+            <a href="?page=simple-page-builder&tab=settings"
+               class="nav-tab <?php echo $current_tab === 'settings' ? 'nav-tab-active' : ''; ?>">
+                <?php _e('Settings', 'simple-page-builder'); ?>
+            </a>
+            <a href="?page=simple-page-builder&tab=documentation"
+               class="nav-tab <?php echo $current_tab === 'documentation' ? 'nav-tab-active' : ''; ?>">
+                <?php _e('Documentation', 'simple-page-builder'); ?>
+            </a>
+        </nav>
+        
+        <div class="spb-admin-content">
+            <?php
+            switch ($current_tab) {
+                case 'api-keys':
+                    $ui = SPB_Api_Keys_UI::get_instance();
+                    $ui->render_page();
+                    break;
+                    
+                case 'activity-log':
+                    $ui = SPB_Activity_Log_UI::get_instance();
+                    $ui->render_page();
+                    break;
+                    
+                case 'created-pages':
+                    // We'll create this next
+                    echo '<div class="spb-card"><h3>Created Pages - Coming Soon</h3></div>';
+                    break;
+                    
+                case 'settings':
+                    $ui = SPB_Settings_UI::get_instance();
+                    $ui->render_page();
+                    break;
+                    
+                case 'documentation':
+                    // We'll create this next
+                    echo '<div class="spb-card"><h3>Documentation - Coming Soon</h3></div>';
+                    break;
+                    
+                default:
+                    $ui = SPB_Api_Keys_UI::get_instance();
+                    $ui->render_page();
+            }
+            ?>
         </div>
-        <?php
-    }
+    </div>
+    <?php
 }
