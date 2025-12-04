@@ -135,138 +135,246 @@ class SPB_Api_Keys_UI {
                     <!-- API Keys List -->
                     <div class="spb-card spb-keys-list-card">
                         <div class="spb-card-header">
-                            <h3><?php _e('API Keys', 'simple-page-builder'); ?></h3>
-                            <span class="spb-badge"><?php echo count($api_keys); ?></span>
+                            <div class="spb-card-header-left">
+                                <h3><?php _e('API Keys', 'simple-page-builder'); ?></h3>
+                                <span class="spb-badge spb-badge-count"><?php echo count($api_keys); ?></span>
+                            </div>
+                            <div class="spb-card-header-right">
+                                <button type="button" id="spb-select-all-toggle" class="button button-small">
+                                    <?php _e('Select All', 'simple-page-builder'); ?>
+                                </button>
+                            </div>
                         </div>
                         
                         <?php if (empty($api_keys)): ?>
                             <div class="spb-empty-state">
-                                <p><?php _e('No API keys generated yet.', 'simple-page-builder'); ?></p>
-                                <p><?php _e('Generate your first key to get started.', 'simple-page-builder'); ?></p>
+                                <div class="spb-empty-icon">
+                                    <span class="dashicons dashicons-admin-network"></span>
+                                </div>
+                                <h4><?php _e('No API Keys Yet', 'simple-page-builder'); ?></h4>
+                                <p><?php _e('Generate your first API key to start using the API.', 'simple-page-builder'); ?></p>
                             </div>
                         <?php else: ?>
-                            <div class="spb-table-responsive">
-                                <table class="wp-list-table widefat fixed striped">
-                                    <thead>
-                                        <tr>
-                                            <th class="check-column"><input type="checkbox" id="spb-select-all"></th>
-                                            <th><?php _e('Key Name', 'simple-page-builder'); ?></th>
-                                            <th><?php _e('API Key', 'simple-page-builder'); ?></th>
-                                            <th><?php _e('Status', 'simple-page-builder'); ?></th>
-                                            <th><?php _e('Created', 'simple-page-builder'); ?></th>
-                                            <th><?php _e('Last Used', 'simple-page-builder'); ?></th>
-                                            <th><?php _e('Requests', 'simple-page-builder'); ?></th>
-                                            <th><?php _e('Actions', 'simple-page-builder'); ?></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($api_keys as $key): ?>
-                                            <?php 
-                                            // Get the full API key (decrypted from database)
-                                            $full_key = $this->keys_manager->get_full_api_key($key->id);
-                                            ?>
+                            <div class="spb-table-container">
+                                <div class="spb-table-responsive">
+                                    <table class="wp-list-table widefat fixed striped spb-api-keys-table">
+                                        <thead>
                                             <tr>
-                                                <th scope="row" class="check-column">
-                                                    <input type="checkbox" name="key_ids[]" value="<?php echo esc_attr($key->id); ?>">
+                                                <th class="check-column">
+                                                    <input type="checkbox" id="spb-select-all" class="spb-checkbox">
                                                 </th>
-                                                <td>
-                                                    <strong><?php echo esc_html($key->key_name); ?></strong>
-                                                    <?php if ($key->user_name): ?>
-                                                        <br>
-                                                        <small class="text-muted">
-                                                            <?php printf(__('By: %s', 'simple-page-builder'), esc_html($key->user_name)); ?>
-                                                        </small>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <div class="spb-key-display-wrapper">
-                                                        <?php if ($full_key): ?>
-                                                            <div class="spb-full-key-display">
-                                                                <code class="spb-full-key" id="spb-full-key-<?php echo esc_attr($key->id); ?>">
-                                                                    <?php echo esc_html($full_key); ?>
-                                                                </code>
-                                                                <button type="button" 
-                                                                        class="button button-small spb-copy-key-btn" 
-                                                                        data-clipboard-target="#spb-full-key-<?php echo esc_attr($key->id); ?>"
-                                                                        data-key-id="<?php echo esc_attr($key->id); ?>">
-                                                                    <span class="dashicons dashicons-clipboard"></span>
-                                                                </button>
-                                                            </div>
-                                                        <?php else: ?>
-                                                            <code><?php echo esc_html($key->api_key_preview); ?></code>
-                                                            <small class="spb-text-muted">
-                                                                <?php _e('(Full key not available)', 'simple-page-builder'); ?>
-                                                            </small>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <?php echo $this->get_status_badge($key->status); ?>
-                                                    <?php if ($key->is_expired ?? false): ?>
-                                                        <span class="spb-badge spb-badge-warning">
-                                                            <?php _e('Expired', 'simple-page-builder'); ?>
-                                                        </span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <?php echo esc_html($key->created_at_formatted); ?>
-                                                    <?php if ($key->expires_at_formatted !== __('Never', 'simple-page-builder')): ?>
-                                                        <br>
-                                                        <small class="text-muted">
-                                                            <?php printf(__('Expires: %s', 'simple-page-builder'), esc_html($key->expires_at_formatted)); ?>
-                                                        </small>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <?php echo esc_html($key->last_used_human); ?>
-                                                </td>
-                                                <td>
-                                                    <?php echo intval($key->request_count); ?>
-                                                </td>
-                                                <td>
-                                                    <div class="spb-action-buttons">
-                                                        <a href="<?php echo esc_url(add_query_arg(array(
-                                                            'page' => 'simple-page-builder',
-                                                            'tab' => 'api-keys',
-                                                            'view_key' => $key->id
-                                                        ), admin_url('tools.php'))); ?>"
-                                                           class="button button-small">
-                                                            <?php _e('View', 'simple-page-builder'); ?>
-                                                        </a>
-                                                        
-                                                        <?php if ($key->status === 'active'): ?>
-                                                            <button type="button" 
-                                                                    class="button button-small button-warning spb-revoke-btn"
-                                                                    data-key-id="<?php echo esc_attr($key->id); ?>"
-                                                                    data-key-name="<?php echo esc_attr($key->key_name); ?>">
-                                                                <?php _e('Revoke', 'simple-page-builder'); ?>
-                                                            </button>
-                                                        <?php else: ?>
-                                                            <button type="button" 
-                                                                    class="button button-small spb-delete-btn"
-                                                                    data-key-id="<?php echo esc_attr($key->id); ?>"
-                                                                    data-key-name="<?php echo esc_attr($key->key_name); ?>">
-                                                                <?php _e('Delete', 'simple-page-builder'); ?>
-                                                            </button>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </td>
+                                                <th class="column-key-name"><?php _e('Key Name', 'simple-page-builder'); ?></th>
+                                                <th class="column-api-key"><?php _e('API Key', 'simple-page-builder'); ?></th>
+                                                <th class="column-status"><?php _e('Status', 'simple-page-builder'); ?></th>
+                                                <th class="column-created"><?php _e('Created', 'simple-page-builder'); ?></th>
+                                                <th class="column-last-used"><?php _e('Last Used', 'simple-page-builder'); ?></th>
+                                                <th class="column-requests"><?php _e('Requests', 'simple-page-builder'); ?></th>
+                                                <th class="column-actions"><?php _e('Actions', 'simple-page-builder'); ?></th>
                                             </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Bulk Actions -->
-                            <div class="spb-bulk-actions">
-                                <select id="spb-bulk-action" class="spb-bulk-select">
-                                    <option value=""><?php _e('Bulk Actions', 'simple-page-builder'); ?></option>
-                                    <option value="revoke"><?php _e('Revoke Selected', 'simple-page-builder'); ?></option>
-                                    <option value="delete"><?php _e('Delete Selected', 'simple-page-builder'); ?></option>
-                                </select>
-                                <button type="button" id="spb-bulk-apply" class="button">
-                                    <?php _e('Apply', 'simple-page-builder'); ?>
-                                </button>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($api_keys as $key): ?>
+                                                <?php 
+                                                // Get the full API key (decrypted from database)
+                                                $full_key = $this->keys_manager->get_full_api_key($key->id);
+                                                ?>
+                                                <tr class="spb-key-row <?php echo esc_attr($key->status); ?> <?php echo ($key->is_expired ?? false) ? 'expired' : ''; ?>">
+                                                    <th scope="row" class="check-column">
+                                                        <input type="checkbox" name="key_ids[]" value="<?php echo esc_attr($key->id); ?>" class="spb-checkbox spb-key-checkbox">
+                                                    </th>
+                                                    <td class="column-key-name">
+                                                        <div class="spb-key-info">
+                                                            <div class="spb-key-name-main">
+                                                                <strong class="spb-key-name-text"><?php echo esc_html($key->key_name); ?></strong>
+                                                                <div class="spb-key-meta">
+                                                                    <span class="spb-key-id">ID: <?php echo esc_html($key->id); ?></span>
+                                                                    <?php if ($key->user_name): ?>
+                                                                        <span class="spb-key-user">
+                                                                            <span class="dashicons dashicons-admin-users"></span>
+                                                                            <?php echo esc_html($key->user_name); ?>
+                                                                        </span>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="column-api-key">
+                                                        <div class="spb-key-display-wrapper">
+                                                            <?php if ($full_key): ?>
+                                                                <div class="spb-full-key-container">
+                                                                    <div class="spb-key-preview">
+                                                                        <code class="spb-key-preview-text"><?php echo esc_html(substr($full_key, 0, 24)) . '...' . esc_html(substr($full_key, -8)); ?></code>
+                                                                        <button type="button" 
+                                                                                class="button button-small spb-show-key-btn"
+                                                                                data-key-id="<?php echo esc_attr($key->id); ?>">
+                                                                            <span class="dashicons dashicons-visibility"></span>
+                                                                        </button>
+                                                                    </div>
+                                                                    <div class="spb-full-key-display" id="spb-full-key-<?php echo esc_attr($key->id); ?>" style="display: none;">
+                                                                        <div class="spb-full-key-header">
+                                                                            <span class="spb-full-key-label"><?php _e('Full API Key:', 'simple-page-builder'); ?></span>
+                                                                            <button type="button" 
+                                                                                    class="button button-small spb-copy-key-btn" 
+                                                                                    data-clipboard-target="#spb-key-value-<?php echo esc_attr($key->id); ?>"
+                                                                                    data-key-id="<?php echo esc_attr($key->id); ?>">
+                                                                                <span class="dashicons dashicons-clipboard"></span>                                                                            </button>
+                                                                            <button type="button" 
+                                                                                    class="button button-small spb-hide-key-btn"
+                                                                                    data-key-id="<?php echo esc_attr($key->id); ?>">
+                                                                                <span class="dashicons dashicons-hidden"></span>
+                                                                            </button>
+                                                                        </div>
+                                                                        <div class="spb-full-key-value">
+                                                                            <code id="spb-key-value-<?php echo esc_attr($key->id); ?>" class="spb-full-key-text">
+                                                                                <?php echo esc_html($full_key); ?>
+                                                                            </code>
+                                                                        </div>
+                                                                        <div class="spb-key-warning">
+                                                                            <span class="dashicons dashicons-warning"></span>
+                                                                            <?php _e('Keep this key secure. Anyone with this key can access your API.', 'simple-page-builder'); ?>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            <?php else: ?>
+                                                                <div class="spb-key-preview">
+                                                                    <code class="spb-key-preview-text"><?php echo esc_html($key->api_key_preview); ?></code>
+                                                                    <small class="spb-text-muted">
+                                                                        <?php _e('(Full key not available)', 'simple-page-builder'); ?>
+                                                                    </small>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="column-status">
+                                                        <div class="spb-status-container">
+                                                            <?php echo $this->get_status_badge($key->status); ?>
+                                                            <?php if ($key->is_expired ?? false): ?>
+                                                                <span class="spb-badge spb-badge-expired">
+                                                                    <span class="dashicons dashicons-clock"></span>
+                                                                    <?php _e('Expired', 'simple-page-builder'); ?>
+                                                                </span>
+                                                            <?php endif; ?>
+                                                            <?php if ($key->expires_at_formatted !== __('Never', 'simple-page-builder')): ?>
+                                                                <div class="spb-expiry-info">
+                                                                    <small class="spb-expiry-text">
+                                                                        <?php printf(__('Expires: %s', 'simple-page-builder'), esc_html($key->expires_in)); ?>
+                                                                    </small>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="column-created">
+                                                        <div class="spb-date-container">
+                                                            <span class="spb-date-value"><?php echo esc_html(date_i18n('M j, Y', strtotime($key->created_at))); ?></span>
+                                                            <span class="spb-time-value"><?php echo esc_html(date_i18n('g:i a', strtotime($key->created_at))); ?></span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="column-last-used">
+                                                        <div class="spb-last-used-container">
+                                                            <?php if ($key->last_used_human !== __('Never', 'simple-page-builder')): ?>
+                                                                <span class="spb-last-used-value"><?php echo esc_html($key->last_used_human); ?></span>
+                                                                <small class="spb-last-used-date"><?php echo esc_html($key->last_used_formatted); ?></small>
+                                                            <?php else: ?>
+                                                                <span class="spb-never-used"><?php _e('Never used', 'simple-page-builder'); ?></span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="column-requests">
+                                                        <div class="spb-requests-container">
+                                                            <div class="spb-requests-count">
+                                                                <span class="spb-requests-value"><?php echo intval($key->request_count); ?></span>
+                                                                <span class="spb-requests-label"><?php _e('requests', 'simple-page-builder'); ?></span>
+                                                            </div>
+                                                            <div class="spb-rate-limit">
+                                                                <small class="spb-rate-limit-text">
+                                                                    <?php printf(__('Limit: %d/hr', 'simple-page-builder'), intval($key->rate_limit_hourly)); ?>
+                                                                </small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="column-actions">
+                                                        <div class="spb-action-buttons">
+                                                            <div class="spb-primary-actions">
+                                                                <a href="<?php echo esc_url(add_query_arg(array(
+                                                                    'page' => 'simple-page-builder',
+                                                                    'tab' => 'api-keys',
+                                                                    'view_key' => $key->id
+                                                                ), admin_url('tools.php'))); ?>"
+                                                                class="button button-small spb-view-btn"
+                                                                title="<?php esc_attr_e('View Details', 'simple-page-builder'); ?>">
+                                                                    <span class="dashicons dashicons-info"></span>
+                                                                </a>
+                                                                
+                                                                <?php if ($key->status === 'active'): ?>
+                                                                    <button type="button" 
+                                                                            class="button button-small spb-revoke-btn"
+                                                                            data-key-id="<?php echo esc_attr($key->id); ?>"
+                                                                            data-key-name="<?php echo esc_attr($key->key_name); ?>"
+                                                                            title="<?php esc_attr_e('Revoke Key', 'simple-page-builder'); ?>">
+                                                                        <span class="dashicons dashicons-lock"></span>
+                                                                    </button>
+                                                                <?php else: ?>
+                                                                    <button type="button" 
+                                                                            class="button button-small spb-delete-btn"
+                                                                            data-key-id="<?php echo esc_attr($key->id); ?>"
+                                                                            data-key-name="<?php echo esc_attr($key->key_name); ?>"
+                                                                            title="<?php esc_attr_e('Delete Key', 'simple-page-builder'); ?>">
+                                                                        <span class="dashicons dashicons-trash"></span>
+                                                                    </button>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Bulk Actions -->
+                                <div class="spb-bulk-actions-container" style="display: none;">
+                                    <div class="spb-bulk-actions">
+                                        <div class="spb-bulk-selected">
+                                            <span class="spb-selected-count">0</span> <?php _e('keys selected', 'simple-page-builder'); ?>
+                                        </div>
+                                        <div class="spb-bulk-buttons">
+                                            <select id="spb-bulk-action" class="spb-bulk-select">
+                                                <option value=""><?php _e('Choose Action', 'simple-page-builder'); ?></option>
+                                                <option value="revoke"><?php _e('Revoke Selected', 'simple-page-builder'); ?></option>
+                                                <option value="delete"><?php _e('Delete Selected', 'simple-page-builder'); ?></option>
+                                                <option value="export"><?php _e('Export Selected', 'simple-page-builder'); ?></option>
+                                            </select>
+                                            <button type="button" id="spb-bulk-apply" class="button button-primary">
+                                                <?php _e('Apply', 'simple-page-builder'); ?>
+                                            </button>
+                                            <button type="button" id="spb-bulk-clear" class="button">
+                                                <?php _e('Clear Selection', 'simple-page-builder'); ?>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Table Footer -->
+                                <div class="spb-table-footer">
+                                    <div class="spb-table-stats">
+                                        <span class="spb-total-keys"><?php printf(__('Total: %d keys', 'simple-page-builder'), count($api_keys)); ?></span>
+                                        <?php 
+                                        $active_count = array_filter($api_keys, function($key) { return $key->status === 'active'; });
+                                        if ($active_count): ?>
+                                            <span class="spb-active-keys"><?php printf(__('Active: %d', 'simple-page-builder'), count($active_count)); ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="spb-table-actions">
+                                        <button type="button" class="button button-small spb-export-btn">
+                                            <span class="dashicons dashicons-download"></span>
+                                            <?php _e('Export All', 'simple-page-builder'); ?>
+                                        </button>
+                                        <button type="button" class="button button-small spb-refresh-btn">
+                                            <span class="dashicons dashicons-update"></span>
+                                            <?php _e('Refresh', 'simple-page-builder'); ?>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         <?php endif; ?>
                     </div>

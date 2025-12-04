@@ -36,6 +36,165 @@
                 $button.removeClass('spb-copied');
             }, 2000);
         });
+
+        /* ===== Enhanced API Keys Table Functionality ===== */
+
+            // Toggle full key display
+            $(document).on('click', '.spb-show-key-btn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                var keyId = $(this).data('key-id');
+                $('#spb-full-key-' + keyId).slideDown();
+                $(this).hide();
+            });
+
+            $(document).on('click', '.spb-hide-key-btn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                var keyId = $(this).data('key-id');
+                $('#spb-full-key-' + keyId).slideUp();
+                $('#spb-full-key-' + keyId).closest('.spb-key-preview').find('.spb-show-key-btn').show();
+            });
+
+            // More actions dropdown
+            $(document).on('click', '.spb-more-actions-btn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                var keyId = $(this).data('key-id');
+                var $dropdown = $('#spb-dropdown-' + keyId);
+                
+                // Close other dropdowns
+                $('.spb-dropdown-menu').not($dropdown).removeClass('show');
+                
+                // Toggle current dropdown
+                $dropdown.toggleClass('show');
+                
+                // Close dropdown when clicking outside
+                $(document).on('click.spb-dropdown', function(e) {
+                    if (!$(e.target).closest('.spb-secondary-actions').length) {
+                        $dropdown.removeClass('show');
+                        $(document).off('click.spb-dropdown');
+                    }
+                });
+            });
+
+            // Copy cURL example
+            $(document).on('click', '.spb-copy-curl-btn', function(e) {
+                e.preventDefault();
+                
+                var keyId = $(this).data('key-id');
+                var $row = $(this).closest('tr');
+                var keyName = $row.find('.spb-key-name-text').text();
+                var apiKey = $row.find('.spb-full-key-text').text();
+                
+                if (!apiKey) {
+                    alert('API key not available for this key.');
+                    return;
+                }
+                
+                var curlExample = 'curl -X POST \\\n' +
+                    '  -H "Content-Type: application/json" \\\n' +
+                    '  -H "X-API-Key: ' + apiKey + '" \\\n' +
+                    '  -d \'{"pages":[{"title":"' + keyName + ' Page","content":"Page content"}]}\' \\\n' +
+                    '  "' + window.location.origin + '/wp-json/pagebuilder/v1/create-pages"';
+                
+                // Copy to clipboard
+                var tempTextarea = $('<textarea>');
+                $('body').append(tempTextarea);
+                tempTextarea.val(curlExample).select();
+                document.execCommand('copy');
+                tempTextarea.remove();
+                
+                // Show feedback
+                alert('cURL example copied to clipboard!');
+                
+                // Close dropdown
+                $(this).closest('.spb-dropdown-menu').removeClass('show');
+            });
+
+            // Show QR Code
+            $(document).on('click', '.spb-qrcode-btn', function(e) {
+                e.preventDefault();
+                
+                var keyId = $(this).data('key-id');
+                var keyName = $(this).data('key-name');
+                var $row = $(this).closest('tr');
+                var apiKey = $row.find('.spb-full-key-text').text();
+                
+                if (!apiKey) {
+                    alert('API key not available for QR code.');
+                    return;
+                }
+                
+                // You'll need to implement QR code generation here
+                // For now, show a message
+                alert('QR Code feature would show for: ' + keyName);
+                
+                // Close dropdown
+                $(this).closest('.spb-dropdown-menu').removeClass('show');
+            });
+
+            // Export All
+            $(document).on('click', '.spb-export-btn', function() {
+                // Implement export functionality
+                alert('Export all keys functionality would be implemented here.');
+            });
+
+            // Refresh table
+            $(document).on('click', '.spb-refresh-btn', function() {
+                location.reload();
+            });
+
+            // Bulk actions selection
+            $(document).on('change', '.spb-key-checkbox', function() {
+                updateBulkActions();
+            });
+
+            $(document).on('click', '#spb-select-all-toggle', function() {
+                var isChecked = $(this).hasClass('selected');
+                
+                if (isChecked) {
+                    $('.spb-key-checkbox').prop('checked', false);
+                    $(this).removeClass('selected').text('Select All');
+                } else {
+                    $('.spb-key-checkbox').prop('checked', true);
+                    $(this).addClass('selected').text('Deselect All');
+                }
+                
+                updateBulkActions();
+            });
+
+            $(document).on('change', '#spb-select-all', function() {
+                $('.spb-key-checkbox').prop('checked', $(this).prop('checked'));
+                updateBulkActions();
+            });
+
+            // Clear selection
+            $(document).on('click', '#spb-bulk-clear', function() {
+                $('.spb-key-checkbox').prop('checked', false);
+                $('#spb-select-all').prop('checked', false);
+                $('#spb-select-all-toggle').removeClass('selected').text('Select All');
+                updateBulkActions();
+            });
+
+            function updateBulkActions() {
+                var selectedCount = $('.spb-key-checkbox:checked').length;
+                var $container = $('.spb-bulk-actions-container');
+                var $count = $('.spb-selected-count');
+                
+                if (selectedCount > 0) {
+                    $container.slideDown();
+                    $count.text(selectedCount);
+                } else {
+                    $container.slideUp();
+                }
+            }
+
+            // Initialize bulk actions
+            updateBulkActions();
         
         /* ===== Copy Buttons in Recent Key Notice ===== */
         $(document).on('click', '.spb-copy-btn', function(e) {
