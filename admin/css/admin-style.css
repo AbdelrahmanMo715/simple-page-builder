@@ -414,6 +414,10 @@ input:checked + .spb-slider:before {
 }
 
 .spb-modal-content {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
     background: #fff;
     border-radius: 3px;
     width: 90%;
