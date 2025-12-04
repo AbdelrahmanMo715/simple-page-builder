@@ -3,6 +3,60 @@
     
     $(document).ready(function() {
         
+        /* ===== Select All Checkbox ===== */
+        $('#spb-select-all').on('change', function() {
+            $('input[name="key_ids[]"]').prop('checked', $(this).prop('checked'));
+        });
+        
+        /* ===== Copy Key Button ===== */
+        $(document).on('click', '.spb-copy-key-btn', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            var $button = $(this);
+            var target = $button.data('clipboard-target');
+            var $target = $(target);
+            
+            // Create a temporary textarea to copy from
+            var tempTextarea = $('<textarea>');
+            $('body').append(tempTextarea);
+            tempTextarea.val($target.text()).select();
+            
+            // Execute copy
+            document.execCommand('copy');
+            tempTextarea.remove();
+            
+            // Show feedback
+            var originalHTML = $button.html();
+            $button.html('<span class="dashicons dashicons-yes"></span>');
+            $button.addClass('spb-copied');
+            
+            setTimeout(function() {
+                $button.html(originalHTML);
+                $button.removeClass('spb-copied');
+            }, 2000);
+        });
+        
+        /* ===== Copy Buttons in Recent Key Notice ===== */
+        $(document).on('click', '.spb-copy-btn', function(e) {
+            e.preventDefault();
+            
+            var $button = $(this);
+            var target = $button.data('clipboard-target');
+            var $target = $(target);
+            
+            $target.select();
+            document.execCommand('copy');
+            
+            // Show feedback
+            var originalText = $button.text();
+            $button.text(spb_ajax.copied_text);
+            
+            setTimeout(function() {
+                $button.text(originalText);
+            }, 2000);
+        });
+        
         /* ===== API Keys Management ===== */
         
         // Revoke API Key
@@ -331,7 +385,7 @@
             });
         }
         
-        // Show Secret Key Modal
+        // Show Secret Key Modal (for regenerated secrets)
         function showSecretKeyModal(data) {
             var modal = $('#spb-key-modal');
             $('#spb-generated-key').val(data.secret_key);
@@ -348,23 +402,6 @@
             $('#spb-curl-example').text(curlExample);
             modal.show();
         }
-        
-        // Copy to clipboard
-        $(document).on('click', '.spb-copy-btn', function() {
-            var target = $(this).data('clipboard-target');
-            var $input = $(target);
-            
-            $input.select();
-            document.execCommand('copy');
-            
-            // Show feedback
-            var originalText = $(this).text();
-            $(this).text(spb_ajax.copy_text);
-            
-            setTimeout(function() {
-                $(this).text(originalText);
-            }.bind(this), 2000);
-        });
         
     });
     

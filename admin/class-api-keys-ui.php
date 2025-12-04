@@ -17,8 +17,28 @@ class SPB_Api_Keys_UI {
         // Add admin notices
         add_action('admin_notices', array($this, 'display_admin_notices'));
         
-        // Handle generated key display
-        add_action('admin_init', array($this, 'handle_generated_key_display'));
+        // Enqueue scripts
+        add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
+    }
+    
+    /**
+     * Enqueue admin scripts
+     */
+    public function enqueue_admin_scripts($hook) {
+        if ($hook !== 'tools_page_simple-page-builder') {
+            return;
+        }
+        
+        wp_enqueue_script('clipboard');
+        wp_enqueue_style('spb-admin-style', SPB_PLUGIN_URL . 'admin/css/admin-style.css', array(), SPB_VERSION);
+        wp_enqueue_script('spb-admin-script', SPB_PLUGIN_URL . 'admin/js/admin-script.js', array('jquery', 'clipboard'), SPB_VERSION, true);
+        
+        wp_localize_script('spb-admin-script', 'spb_ajax', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('spb_admin_nonce'),
+            'copy_text' => __('Copy', 'simple-page-builder'),
+            'copied_text' => __('Copied!', 'simple-page-builder')
+        ));
     }
     
     /**
@@ -129,8 +149,9 @@ class SPB_Api_Keys_UI {
                                 <table class="wp-list-table widefat fixed striped">
                                     <thead>
                                         <tr>
+                                            <th class="check-column"><input type="checkbox" id="spb-select-all"></th>
                                             <th><?php _e('Key Name', 'simple-page-builder'); ?></th>
-                                            <th><?php _e('Key ID', 'simple-page-builder'); ?></th>
+                                            <th><?php _e('API Key', 'simple-page-builder'); ?></th>
                                             <th><?php _e('Status', 'simple-page-builder'); ?></th>
                                             <th><?php _e('Created', 'simple-page-builder'); ?></th>
                                             <th><?php _e('Last Used', 'simple-page-builder'); ?></th>
@@ -140,7 +161,14 @@ class SPB_Api_Keys_UI {
                                     </thead>
                                     <tbody>
                                         <?php foreach ($api_keys as $key): ?>
+                                            <?php 
+                                            // Get the full API key (decrypted from database)
+                                            $full_key = $this->keys_manager->get_full_api_key($key->id);
+                                            ?>
                                             <tr>
+                                                <th scope="row" class="check-column">
+                                                    <input type="checkbox" name="key_ids[]" value="<?php echo esc_attr($key->id); ?>">
+                                                </th>
                                                 <td>
                                                     <strong><?php echo esc_html($key->key_name); ?></strong>
                                                     <?php if ($key->user_name): ?>
@@ -151,7 +179,26 @@ class SPB_Api_Keys_UI {
                                                     <?php endif; ?>
                                                 </td>
                                                 <td>
-                                                    <code><?php echo esc_html($key->api_key_preview); ?></code>
+                                                    <div class="spb-key-display-wrapper">
+                                                        <?php if ($full_key): ?>
+                                                            <div class="spb-full-key-display">
+                                                                <code class="spb-full-key" id="spb-full-key-<?php echo esc_attr($key->id); ?>">
+                                                                    <?php echo esc_html($full_key); ?>
+                                                                </code>
+                                                                <button type="button" 
+                                                                        class="button button-small spb-copy-key-btn" 
+                                                                        data-clipboard-target="#spb-full-key-<?php echo esc_attr($key->id); ?>"
+                                                                        data-key-id="<?php echo esc_attr($key->id); ?>">
+                                                                    <span class="dashicons dashicons-clipboard"></span>
+                                                                </button>
+                                                            </div>
+                                                        <?php else: ?>
+                                                            <code><?php echo esc_html($key->api_key_preview); ?></code>
+                                                            <small class="spb-text-muted">
+                                                                <?php _e('(Full key not available)', 'simple-page-builder'); ?>
+                                                            </small>
+                                                        <?php endif; ?>
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <?php echo $this->get_status_badge($key->status); ?>
@@ -227,74 +274,6 @@ class SPB_Api_Keys_UI {
             <?php endif; ?>
         </div>
         
-        <!-- Key Generation Modal -->
-        <div id="spb-key-modal" class="spb-modal" style="display: none;">
-            <div class="spb-modal-content">
-                <div class="spb-modal-header">
-                    <h3><?php _e('API Key Generated', 'simple-page-builder'); ?></h3>
-                    <button type="button" class="spb-modal-close">&times;</button>
-                </div>
-                <div class="spb-modal-body">
-                    <div class="spb-key-display">
-                        <div class="spb-alert spb-alert-warning">
-                            <p>
-                                <strong><?php _e('Important:', 'simple-page-builder'); ?></strong>
-                                <?php _e('Save this API key securely. You will not be able to see it again.', 'simple-page-builder'); ?>
-                            </p>
-                        </div>
-                        
-                        <div class="spb-form-group">
-                            <label><?php _e('API Key', 'simple-page-builder'); ?></label>
-                            <div class="spb-key-input-group">
-                                <input type="text" 
-                                       id="spb-generated-key" 
-                                       class="large-text" 
-                                       readonly
-                                       value="">
-                                <button type="button" 
-                                        class="button spb-copy-btn"
-                                        data-clipboard-target="#spb-generated-key">
-                                    <?php _e('Copy', 'simple-page-builder'); ?>
-                                </button>
-                            </div>
-                            <p class="description">
-                                <?php _e('Use this in the X-API-Key header of your requests', 'simple-page-builder'); ?>
-                            </p>
-                        </div>
-                        
-                        <div class="spb-form-group" id="spb-secret-key-section" style="display: none;">
-                            <label><?php _e('Secret Key', 'simple-page-builder'); ?></label>
-                            <div class="spb-key-input-group">
-                                <input type="text" 
-                                       id="spb-generated-secret" 
-                                       class="large-text" 
-                                       readonly
-                                       value="">
-                                <button type="button" 
-                                        class="button spb-copy-btn"
-                                        data-clipboard-target="#spb-generated-secret">
-                                    <?php _e('Copy', 'simple-page-builder'); ?>
-                                </button>
-                            </div>
-                            <p class="description">
-                                <?php _e('Keep this secret for signing requests (if enabled)', 'simple-page-builder'); ?>
-                            </p>
-                        </div>
-                        
-                        <div class="spb-form-group">
-                            <label><?php _e('cURL Example', 'simple-page-builder'); ?></label>
-                            <pre id="spb-curl-example"></pre>
-                        </div>
-                    </div>
-                </div>
-                <div class="spb-modal-footer">
-                    <button type="button" class="button button-primary spb-modal-close">
-                        <?php _e('Close', 'simple-page-builder'); ?>
-                    </button>
-                </div>
-            </div>
-        </div>
-        
         <!-- Confirmation Modal -->
         <div id="spb-confirm-modal" class="spb-modal" style="display: none;">
             <div class="spb-modal-content">
@@ -324,6 +303,9 @@ class SPB_Api_Keys_UI {
     private function render_key_details($key) {
         $stats = $this->keys_manager->get_key_statistics($key->id);
         
+        // Get the full API key
+        $full_key = $this->keys_manager->get_full_api_key($key->id);
+        
         ?>
         <div class="spb-key-details">
             <div class="spb-details-header">
@@ -348,7 +330,26 @@ class SPB_Api_Keys_UI {
                     <table class="spb-info-table">
                         <tr>
                             <th><?php _e('Key ID', 'simple-page-builder'); ?></th>
-                            <td><code><?php echo esc_html($key->api_key_preview); ?></code></td>
+                            <td>
+                                <?php if ($full_key): ?>
+                                    <div class="spb-full-key-display">
+                                        <code class="spb-full-key" id="spb-details-key-<?php echo esc_attr($key->id); ?>">
+                                            <?php echo esc_html($full_key); ?>
+                                        </code>
+                                        <button type="button" 
+                                                class="button button-small spb-copy-key-btn" 
+                                                data-clipboard-target="#spb-details-key-<?php echo esc_attr($key->id); ?>"
+                                                data-key-id="<?php echo esc_attr($key->id); ?>">
+                                            <span class="dashicons dashicons-clipboard"></span>
+                                        </button>
+                                    </div>
+                                <?php else: ?>
+                                    <code><?php echo esc_html($key->api_key_preview); ?></code>
+                                    <small class="spb-text-muted">
+                                        <?php _e('(Full key not available)', 'simple-page-builder'); ?>
+                                    </small>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                         <tr>
                             <th><?php _e('Created', 'simple-page-builder'); ?></th>
@@ -458,18 +459,25 @@ class SPB_Api_Keys_UI {
                 <h3><?php _e('Usage Instructions', 'simple-page-builder'); ?></h3>
                 <div class="spb-usage-instructions">
                     <p><?php _e('Use this API key in the X-API-Key header of your requests:', 'simple-page-builder'); ?></p>
-                    <pre><code>curl -X POST \
+                    <?php if ($full_key): ?>
+                        <pre><code>curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: <?php echo esc_html($full_key); ?>" \
+  -d '{"pages":[{"title":"My Page","content":"Page content"}]}' \
+  <?php echo esc_url(get_rest_url(null, 'pagebuilder/v1/create-pages')); ?></code></pre>
+                    <?php else: ?>
+                        <pre><code>curl -X POST \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_API_KEY_HERE" \
   -d '{"pages":[{"title":"My Page","content":"Page content"}]}' \
   <?php echo esc_url(get_rest_url(null, 'pagebuilder/v1/create-pages')); ?></code></pre>
-                    
-                    <div class="spb-alert spb-alert-info">
-                        <p>
-                            <strong><?php _e('Note:', 'simple-page-builder'); ?></strong>
-                            <?php _e('The actual API key is not shown here for security reasons. It was only displayed when the key was generated.', 'simple-page-builder'); ?>
-                        </p>
-                    </div>
+                        <div class="spb-alert spb-alert-info">
+                            <p>
+                                <strong><?php _e('Note:', 'simple-page-builder'); ?></strong>
+                                <?php _e('The full API key is not available for display.', 'simple-page-builder'); ?>
+                            </p>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -530,117 +538,47 @@ class SPB_Api_Keys_UI {
     }
     
     /**
- * Display admin notices
- */
-public function display_admin_notices() {
-    if (!isset($_GET['page']) || $_GET['page'] !== 'simple-page-builder') {
-        return;
-    }
-    
-    // Display error notices from transient
-    $error_message = get_transient('spb_admin_error_' . get_current_user_id());
-    if ($error_message) {
-        ?>
-        <div class="notice notice-error is-dismissible">
-            <p><?php echo esc_html($error_message); ?></p>
-        </div>
-        <?php
-        delete_transient('spb_admin_error_' . get_current_user_id());
-    }
-    
-    // Display success notices
-    if (isset($_GET['generated']) && $_GET['generated'] === '1') {
-        ?>
-        <div class="notice notice-success is-dismissible">
-            <p><?php _e('API key generated successfully!', 'simple-page-builder'); ?></p>
-        </div>
-        <?php
-    }
-    
-    if (isset($_GET['revoked']) && $_GET['revoked'] === '1') {
-        ?>
-        <div class="notice notice-warning is-dismissible">
-            <p><?php _e('API key revoked successfully.', 'simple-page-builder'); ?></p>
-        </div>
-        <?php
-    }
-    
-    if (isset($_GET['deleted']) && $_GET['deleted'] === '1') {
-        ?>
-        <div class="notice notice-success is-dismissible">
-            <p><?php _e('API key deleted successfully.', 'simple-page-builder'); ?></p>
-        </div>
-        <?php
-    }
-}
-    /**
-     * Handle generated key display from transient
+     * Display admin notices
      */
-    public function handle_generated_key_display() {
-        if (!isset($_GET['page']) || $_GET['page'] !== 'simple-page-builder' || !isset($_GET['generated'])) {
+    public function display_admin_notices() {
+        if (!isset($_GET['page']) || $_GET['page'] !== 'simple-page-builder') {
             return;
         }
         
-        $transient_key = 'spb_generated_key_' . get_current_user_id();
-        $generated_key = get_transient($transient_key);
+        // Display error notices from transient
+        $error_message = get_transient('spb_admin_error_' . get_current_user_id());
+        if ($error_message) {
+            ?>
+            <div class="notice notice-error is-dismissible">
+                <p><?php echo esc_html($error_message); ?></p>
+            </div>
+            <?php
+            delete_transient('spb_admin_error_' . get_current_user_id());
+        }
         
-        if ($generated_key) {
-            // Add inline script to show modal
-            add_action('admin_footer', function() use ($generated_key) {
-                ?>
-                <script>
-                jQuery(document).ready(function($) {
-                    // Show modal with generated key
-                    var keyData = <?php echo json_encode($generated_key); ?>;
-                    var modal = $('#spb-key-modal');
-                    
-                    // Fill modal content
-                    $('#spb-generated-key').val(keyData.api_key);
-                    $('#spb-generated-secret').val(keyData.secret_key);
-                    
-                    // Show secret key section if secret exists
-                    if (keyData.secret_key) {
-                        $('#spb-secret-key-section').show();
-                    }
-                    
-                    // Create cURL example
-                    var curlExample = 'curl -X POST \\\n' +
-                        '  -H "Content-Type: application/json" \\\n' +
-                        '  -H "X-API-Key: ' + keyData.api_key + '" \\\n' +
-                        '  -d \'{"pages":[{"title":"Example Page","content":"Page content"}]}\' \\\n' +
-                        '  "' + '<?php echo esc_js(get_rest_url(null, "pagebuilder/v1/create-pages")); ?>"';
-                    
-                    $('#spb-curl-example').text(curlExample);
-                    
-                    // Show modal
-                    modal.show();
-                    
-                    // Copy button functionality
-                    $('.spb-copy-btn').on('click', function() {
-                        var target = $(this).data('clipboard-target');
-                        var input = $(target);
-                        input.select();
-                        document.execCommand('copy');
-                        
-                        // Show copied message
-                        var originalText = $(this).text();
-                        $(this).text('<?php esc_js(_e("Copied!", "simple-page-builder")); ?>');
-                        setTimeout(function() {
-                            $(this).text(originalText);
-                        }.bind(this), 2000);
-                    });
-                    
-                    // Close modal
-                    $('.spb-modal-close').on('click', function() {
-                        modal.hide();
-                    });
-                });
-                </script>
-                <?php
-            });
-            
-            // Delete transient after showing
-            delete_transient($transient_key);
+        // Display success notices
+        if (isset($_GET['generated']) && $_GET['generated'] === '1') {
+            ?>
+            <div class="notice notice-success is-dismissible">
+                <p><?php _e('API key generated successfully! You can find it in the table below with a copy button.', 'simple-page-builder'); ?></p>
+            </div>
+            <?php
+        }
+        
+        if (isset($_GET['revoked']) && $_GET['revoked'] === '1') {
+            ?>
+            <div class="notice notice-warning is-dismissible">
+                <p><?php _e('API key revoked successfully.', 'simple-page-builder'); ?></p>
+            </div>
+            <?php
+        }
+        
+        if (isset($_GET['deleted']) && $_GET['deleted'] === '1') {
+            ?>
+            <div class="notice notice-success is-dismissible">
+                <p><?php _e('API key deleted successfully.', 'simple-page-builder'); ?></p>
+            </div>
+            <?php
         }
     }
 }

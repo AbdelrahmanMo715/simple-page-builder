@@ -67,7 +67,9 @@ class SimplePageBuilder {
     
     public function activate() {
         require_once SPB_PLUGIN_DIR . 'includes/class-database.php';
+        require_once SPB_PLUGIN_DIR . 'includes/class-database-updater.php'; 
         SPB_Database::create_tables();
+        SPB_Database_Updater::run_on_activation(); 
         
         // Set default options
         add_option('spb_settings', array(

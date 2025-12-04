@@ -23,69 +23,156 @@ class SPB_Api_Keys_Manager {
     /**
      * Generate a new API key
      */
-    public function generate_api_key($data) {
-        global $wpdb;
-        
-        $table_name = $wpdb->prefix . SPB_TABLE_API_KEYS;
-        
-        // Validate data
-        if (empty($data['key_name'])) {
-            return new WP_Error('missing_name', __('Key name is required', 'simple-page-builder'));
-        }
-        
-        // Generate key pair
-        $key_pair = SPB_Api_Auth::generate_api_key_pair();
-        
-        // Prepare expiration date
-        $expires_at = null;
-        if (!empty($data['expiration_days']) && is_numeric($data['expiration_days'])) {
-            $expires_at = date('Y-m-d H:i:s', strtotime('+' . intval($data['expiration_days']) . ' days'));
-        } elseif (!empty($data['expires_at']) && strtotime($data['expires_at'])) {
-            $expires_at = date('Y-m-d H:i:s', strtotime($data['expires_at']));
-        }
-        
-        // Prepare permissions
-        $permissions = array('create_pages');
-        if (!empty($data['permissions']) && is_array($data['permissions'])) {
-            $permissions = array_merge($permissions, $data['permissions']);
-        }
-        
-        // Insert into database
-        $result = $wpdb->insert(
-            $table_name,
-            array(
-                'key_name' => sanitize_text_field($data['key_name']),
-                'api_key_hash' => $key_pair['public_key_hash'],
-                'secret_key_hash' => $key_pair['secret_key_hash'],
-                'status' => 'active',
-                'permissions' => serialize($permissions),
+
+        public function generate_api_key($data) {
+            global $wpdb;
+            
+            $table_name = $wpdb->prefix . SPB_TABLE_API_KEYS;
+            
+            // Validate data
+            if (empty($data['key_name'])) {
+                return new WP_Error('missing_name', __('Key name is required', 'simple-page-builder'));
+            }
+            
+            // Generate key pair
+            $key_pair = SPB_Api_Auth::generate_api_key_pair();
+            
+            // Prepare expiration date
+            $expires_at = null;
+            if (!empty($data['expiration_days']) && is_numeric($data['expiration_days'])) {
+                $expires_at = date('Y-m-d H:i:s', strtotime('+' . intval($data['expiration_days']) . ' days'));
+            } elseif (!empty($data['expires_at']) && strtotime($data['expires_at'])) {
+                $expires_at = date('Y-m-d H:i:s', strtotime($data['expires_at']));
+            }
+            
+            // Prepare permissions
+            $permissions = array('create_pages');
+            if (!empty($data['permissions']) && is_array($data['permissions'])) {
+                $permissions = array_merge($permissions, $data['permissions']);
+            }
+            
+            // Encrypt the API key for storage
+            $encrypted_key = $this->encrypt_api_key($key_pair['public_key']);
+            
+            // Insert into database
+            $result = $wpdb->insert(
+                $table_name,
+                array(
+                    'key_name' => sanitize_text_field($data['key_name']),
+                    'api_key_hash' => $key_pair['public_key_hash'],
+                    'api_key_encrypted' => $encrypted_key, // Store encrypted key
+                    'secret_key_hash' => $key_pair['secret_key_hash'],
+                    'status' => 'active',
+                    'permissions' => serialize($permissions),
+                    'expires_at' => $expires_at,
+                    'user_id' => get_current_user_id(),
+                    'rate_limit_hourly' => !empty($data['rate_limit']) ? intval($data['rate_limit']) : 100,
+                    'created_at' => current_time('mysql')
+                ),
+                array('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s')
+            );
+            
+            if (!$result) {
+                return new WP_Error('db_error', __('Failed to create API key', 'simple-page-builder'));
+            }
+            
+            $key_id = $wpdb->insert_id;
+            
+            // Log the generation
+            $this->log_key_action($key_id, 'generated', get_current_user_id());
+            
+            return array(
+                'id' => $key_id,
+                'key_name' => $data['key_name'],
+                'api_key' => $key_pair['public_key'],
+                'secret_key' => $key_pair['secret_key'],
                 'expires_at' => $expires_at,
-                'user_id' => get_current_user_id(),
-                'rate_limit_hourly' => !empty($data['rate_limit']) ? intval($data['rate_limit']) : 100,
-                'created_at' => current_time('mysql')
-            ),
-            array('%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s')
-        );
-        
-        if (!$result) {
-            return new WP_Error('db_error', __('Failed to create API key', 'simple-page-builder'));
+                'permissions' => $permissions
+            );
         }
-        
-        $key_id = $wpdb->insert_id;
-        
-        // Log the generation
-        $this->log_key_action($key_id, 'generated', get_current_user_id());
-        
-        return array(
-            'id' => $key_id,
-            'key_name' => $data['key_name'],
-            'api_key' => $key_pair['public_key'],
-            'secret_key' => $key_pair['secret_key'],
-            'expires_at' => $expires_at,
-            'permissions' => $permissions
-        );
+
+        /**
+         * Encrypt API key for storage
+         */
+        private function encrypt_api_key($api_key) {
+            $method = 'aes-256-cbc';
+            
+            // Get encryption key from wp-config or generate one
+            $encryption_key = defined('SPB_ENCRYPTION_KEY') ? SPB_ENCRYPTION_KEY : $this->get_default_encryption_key();
+            
+            // Generate initialization vector
+            $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length($method));
+            
+            // Encrypt the API key
+            $encrypted = openssl_encrypt($api_key, $method, $encryption_key, 0, $iv);
+            
+            // Return IV + encrypted data
+            return base64_encode($iv . $encrypted);
+        }
+
+        /**
+         * Decrypt API key from storage
+         */
+        private function decrypt_api_key($encrypted_data) {
+            $method = 'aes-256-cbc';
+            
+            // Get encryption key from wp-config or generate one
+            $encryption_key = defined('SPB_ENCRYPTION_KEY') ? SPB_ENCRYPTION_KEY : $this->get_default_encryption_key();
+            
+            // Decode from base64
+            $data = base64_decode($encrypted_data);
+            
+            // Extract IV (first 16 bytes for AES-256-CBC)
+            $iv_length = openssl_cipher_iv_length($method);
+            $iv = substr($data, 0, $iv_length);
+            $encrypted = substr($data, $iv_length);
+            
+            // Decrypt
+            return openssl_decrypt($encrypted, $method, $encryption_key, 0, $iv);
+        }
+
+        /**
+         * Get default encryption key (fallback)
+         */
+        private function get_default_encryption_key() {
+            // Use a combination of site URL and auth keys for encryption
+            $key = get_option('spb_encryption_key');
+            
+            if (!$key) {
+                $key = hash('sha256', AUTH_KEY . AUTH_SALT . get_site_url());
+                update_option('spb_encryption_key', $key);
+            }
+            
+            return $key;
+        }
+        /**
+ * Get full API key by ID (decrypted)
+ */
+public function get_full_api_key($key_id) {
+    global $wpdb;
+    
+    $table_name = $wpdb->prefix . SPB_TABLE_API_KEYS;
+    
+    // Get the encrypted key from database
+    $encrypted_key = $wpdb->get_var($wpdb->prepare(
+        "SELECT api_key_encrypted FROM $table_name WHERE id = %d",
+        $key_id
+    ));
+    
+    if (!$encrypted_key) {
+        return false;
     }
     
+    try {
+        // Decrypt the key
+        return $this->decrypt_api_key($encrypted_key);
+    } catch (Exception $e) {
+        // Log error but don't expose it
+        error_log('Failed to decrypt API key: ' . $e->getMessage());
+        return false;
+    }
+}
+            
     /**
      * Revoke an API key
      */
@@ -272,6 +359,8 @@ class SPB_Api_Keys_Manager {
      * Format key data for display
      */
     private function format_key_data($key) {
+         // Get the full key (decrypted)
+        $key->full_api_key = $this->get_full_api_key($key->id);
         // Never show the actual hash
         $key->api_key_preview = substr($key->api_key_hash, 0, 8) . '***';
         
@@ -469,7 +558,7 @@ private function handle_generate_key() {
         exit;
     }
     
-    // Store the generated key in a transient to display on next page load
+    // Store the generated key in a transient to display in table
     set_transient('spb_generated_key_' . get_current_user_id(), $result, 300); // 5 minutes
     
     // Redirect back to admin page with success flag
@@ -479,8 +568,7 @@ private function handle_generate_key() {
         'generated' => '1'
     ), admin_url('tools.php')));
     exit;
-}
-    
+} 
     /**
      * Handle key revocation
      */

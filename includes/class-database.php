@@ -6,27 +6,28 @@ class SPB_Database {
         
         $charset_collate = $wpdb->get_charset_collate();
         
-        // Table for API keys
-        $table_api_keys = $wpdb->prefix . SPB_TABLE_API_KEYS;
-        $sql_api_keys = "CREATE TABLE IF NOT EXISTS $table_api_keys (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            key_name varchar(100) NOT NULL,
-            api_key_hash varchar(255) NOT NULL,
-            secret_key_hash varchar(255) NOT NULL,
-            status varchar(20) DEFAULT 'active',
-            permissions text,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            expires_at datetime NULL,
-            last_used datetime NULL,
-            request_count bigint(20) DEFAULT 0,
-            rate_limit_hourly int DEFAULT 100,
-            user_id bigint(20),
-            PRIMARY KEY (id),
-            UNIQUE KEY api_key_hash (api_key_hash),
-            KEY status (status),
-            KEY expires_at (expires_at)
-        ) $charset_collate;";
-        
+        // Table for API keys - Update the SQL to add api_key_encrypted field
+            $table_api_keys = $wpdb->prefix . SPB_TABLE_API_KEYS;
+            $sql_api_keys = "CREATE TABLE IF NOT EXISTS $table_api_keys (
+                id bigint(20) NOT NULL AUTO_INCREMENT,
+                key_name varchar(100) NOT NULL,
+                api_key_hash varchar(255) NOT NULL,
+                api_key_encrypted text NULL, -- NEW FIELD: Store encrypted full key
+                secret_key_hash varchar(255) NOT NULL,
+                status varchar(20) DEFAULT 'active',
+                permissions text,
+                created_at datetime DEFAULT CURRENT_TIMESTAMP,
+                expires_at datetime NULL,
+                last_used datetime NULL,
+                request_count bigint(20) DEFAULT 0,
+                rate_limit_hourly int DEFAULT 100,
+                user_id bigint(20),
+                PRIMARY KEY (id),
+                UNIQUE KEY api_key_hash (api_key_hash),
+                KEY status (status),
+                KEY expires_at (expires_at)
+            ) $charset_collate;";
+                    
         // Table for activity logs
         $table_activity_logs = $wpdb->prefix . SPB_TABLE_ACTIVITY_LOGS;
         $sql_activity_logs = "CREATE TABLE IF NOT EXISTS $table_activity_logs (

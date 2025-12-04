@@ -551,3 +551,147 @@ input:checked + .spb-slider:before {
         flex-direction: column;
     }
 }
+/* API Key Display Styles */
+.spb-full-key-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.spb-full-key-display code {
+    flex: 1;
+    word-break: break-all;
+    font-size: 12px;
+    padding: 4px 8px;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+}
+
+.spb-key-display-wrapper {
+    max-width: 400px;
+}
+
+.spb-key-warning {
+    margin-top: 5px;
+}
+
+.spb-text-warning {
+    color: #d63638;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.spb-text-warning .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.spb-text-muted {
+    color: #646970;
+    font-size: 12px;
+    display: block;
+    margin-top: 4px;
+}
+
+/* Copy Button Styles */
+.spb-copy-key-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: auto;
+}
+
+.spb-copy-key-btn .dashicons {
+    margin: 0;
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.spb-copy-key-btn.spb-copied {
+    background-color: #46b450;
+    border-color: #46b450;
+    color: white;
+}
+
+/* Recent Key Notice */
+.spb-recent-key-notice {
+    margin-top: 20px;
+    border-top: 1px solid #dcdcde;
+    padding-top: 20px;
+}
+
+.spb-key-display-section {
+    margin: 15px 0;
+}
+
+.spb-key-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.spb-key-input-group input {
+    flex: 1;
+}
+
+/* Status Badges */
+.spb-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.spb-badge-success {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.spb-badge-danger {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.spb-badge-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.spb-badge-info {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.spb-badge-secondary {
+    background-color: #f3f4f6;
+    color: #374151;
+}
+
+/* Checkbox column */
+.check-column {
+    width: 2.2em;
+}
+
+.spb-bulk-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.spb-bulk-select {
+    max-width: 200px;
+}
