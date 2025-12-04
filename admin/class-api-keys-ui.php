@@ -530,38 +530,49 @@ class SPB_Api_Keys_UI {
     }
     
     /**
-     * Display admin notices
-     */
-    public function display_admin_notices() {
-        if (!isset($_GET['page']) || $_GET['page'] !== 'simple-page-builder') {
-            return;
-        }
-        
-        if (isset($_GET['generated']) && $_GET['generated'] === '1') {
-            ?>
-            <div class="notice notice-success is-dismissible">
-                <p><?php _e('API key generated successfully!', 'simple-page-builder'); ?></p>
-            </div>
-            <?php
-        }
-        
-        if (isset($_GET['revoked']) && $_GET['revoked'] === '1') {
-            ?>
-            <div class="notice notice-warning is-dismissible">
-                <p><?php _e('API key revoked successfully.', 'simple-page-builder'); ?></p>
-            </div>
-            <?php
-        }
-        
-        if (isset($_GET['deleted']) && $_GET['deleted'] === '1') {
-            ?>
-            <div class="notice notice-success is-dismissible">
-                <p><?php _e('API key deleted successfully.', 'simple-page-builder'); ?></p>
-            </div>
-            <?php
-        }
+ * Display admin notices
+ */
+public function display_admin_notices() {
+    if (!isset($_GET['page']) || $_GET['page'] !== 'simple-page-builder') {
+        return;
     }
     
+    // Display error notices from transient
+    $error_message = get_transient('spb_admin_error_' . get_current_user_id());
+    if ($error_message) {
+        ?>
+        <div class="notice notice-error is-dismissible">
+            <p><?php echo esc_html($error_message); ?></p>
+        </div>
+        <?php
+        delete_transient('spb_admin_error_' . get_current_user_id());
+    }
+    
+    // Display success notices
+    if (isset($_GET['generated']) && $_GET['generated'] === '1') {
+        ?>
+        <div class="notice notice-success is-dismissible">
+            <p><?php _e('API key generated successfully!', 'simple-page-builder'); ?></p>
+        </div>
+        <?php
+    }
+    
+    if (isset($_GET['revoked']) && $_GET['revoked'] === '1') {
+        ?>
+        <div class="notice notice-warning is-dismissible">
+            <p><?php _e('API key revoked successfully.', 'simple-page-builder'); ?></p>
+        </div>
+        <?php
+    }
+    
+    if (isset($_GET['deleted']) && $_GET['deleted'] === '1') {
+        ?>
+        <div class="notice notice-success is-dismissible">
+            <p><?php _e('API key deleted successfully.', 'simple-page-builder'); ?></p>
+        </div>
+        <?php
+    }
+}
     /**
      * Handle generated key display from transient
      */

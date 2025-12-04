@@ -12,7 +12,7 @@ class SPB_Api_Keys_Manager {
     
     private function __construct() {
         // Handle admin actions via AJAX or direct POST
-        add_action('admin_init', array($this, 'handle_admin_actions'));
+        // add_action('admin_init', array($this, 'handle_admin_actions'));
         add_action('wp_ajax_spb_generate_api_key', array($this, 'ajax_generate_api_key'));
         add_action('wp_ajax_spb_revoke_api_key', array($this, 'ajax_revoke_api_key'));
         add_action('wp_ajax_spb_delete_api_key', array($this, 'ajax_delete_api_key'));
@@ -430,33 +430,56 @@ class SPB_Api_Keys_Manager {
         }
     }
     
-    /**
-     * Handle key generation via form
-     */
-    private function handle_generate_key() {
-        $data = array(
-            'key_name' => sanitize_text_field($_POST['key_name'] ?? ''),
-            'expiration_days' => isset($_POST['expiration_days']) ? intval($_POST['expiration_days']) : 0,
-            'rate_limit' => isset($_POST['rate_limit']) ? intval($_POST['rate_limit']) : 100
-        );
+/**
+ * Handle key generation via form
+ */
+private function handle_generate_key() {
+    // Get form data
+    $data = array(
+        'key_name' => sanitize_text_field($_POST['key_name'] ?? ''),
+        'expiration_days' => isset($_POST['expiration_days']) ? intval($_POST['expiration_days']) : 0,
+        'rate_limit' => isset($_POST['rate_limit']) ? intval($_POST['rate_limit']) : 100
+    );
+    
+    // Validate required fields
+    if (empty($data['key_name'])) {
+        // Store error in transient
+        set_transient('spb_admin_error_' . get_current_user_id(), __('Key name is required', 'simple-page-builder'), 30);
         
-        $result = $this->generate_api_key($data);
-        
-        if (is_wp_error($result)) {
-            wp_die($result->get_error_message());
-        }
-        
-        // Store the generated key in a transient to display on next page load
-        set_transient('spb_generated_key_' . get_current_user_id(), $result, 300); // 5 minutes
-        
-        // Redirect back to admin page
-        wp_redirect(add_query_arg(array(
+        // Redirect back with error
+        wp_safe_redirect(add_query_arg(array(
             'page' => 'simple-page-builder',
-            'tab' => 'api-keys',
-            'generated' => '1'
+            'tab' => 'api-keys'
         ), admin_url('tools.php')));
         exit;
     }
+    
+    // Generate the key
+    $result = $this->generate_api_key($data);
+    
+    if (is_wp_error($result)) {
+        // Store error in transient
+        set_transient('spb_admin_error_' . get_current_user_id(), $result->get_error_message(), 30);
+        
+        // Redirect back with error
+        wp_safe_redirect(add_query_arg(array(
+            'page' => 'simple-page-builder',
+            'tab' => 'api-keys'
+        ), admin_url('tools.php')));
+        exit;
+    }
+    
+    // Store the generated key in a transient to display on next page load
+    set_transient('spb_generated_key_' . get_current_user_id(), $result, 300); // 5 minutes
+    
+    // Redirect back to admin page with success flag
+    wp_safe_redirect(add_query_arg(array(
+        'page' => 'simple-page-builder',
+        'tab' => 'api-keys',
+        'generated' => '1'
+    ), admin_url('tools.php')));
+    exit;
+}
     
     /**
      * Handle key revocation

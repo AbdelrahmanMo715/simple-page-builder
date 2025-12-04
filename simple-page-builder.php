@@ -105,6 +105,7 @@ class SimplePageBuilder {
         require_once SPB_PLUGIN_DIR . 'includes/class-webhook-handler.php';
         require_once SPB_PLUGIN_DIR . 'includes/class-api-keys-manager.php';
         require_once SPB_PLUGIN_DIR . 'includes/class-rate-limiter.php';
+        require_once SPB_PLUGIN_DIR . 'includes/class-simple-form-handler.php';
         
         // Admin functionality
         if (is_admin()) {
