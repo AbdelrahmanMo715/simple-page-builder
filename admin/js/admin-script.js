@@ -435,29 +435,39 @@
         
         // Regenerate Secret Key
         function regenerateSecretKey(keyId) {
-            $.ajax({
-                url: spb_ajax.ajax_url,
-                method: 'POST',
-                data: {
-                    action: 'spb_regenerate_secret',
-                    key_id: keyId,
-                    nonce: spb_ajax.nonce
-                },
-                beforeSend: function() {
-                    // Show loading
-                },
-                success: function(response) {
-                    if (response.success) {
-                        showSecretKeyModal(response.data);
-                    } else {
-                        alert('Error: ' + response.data.message);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred. Please try again.');
-                }
-            });
+    $.ajax({
+        url: spb_ajax.ajax_url,
+        method: 'POST',
+        data: {
+            action: 'spb_regenerate_secret',
+            key_id: keyId,
+            nonce: spb_ajax.nonce
+        },
+        beforeSend: function() {
+            // Show loading indicator
+            $('#spb-confirm-modal .spb-modal-footer').html('<p>Regenerating keys...</p>');
+        },
+        success: function(response) {
+            if (response.success) {
+                // Show both keys in modal
+                showSecretKeyModal(response.data);
+                
+                // Update confirm button to reload page
+                $('#spb-confirm-action').off('click').on('click', function() {
+                    location.reload();
+                }).text('Close & Refresh');
+                
+            } else {
+                alert('Error: ' + response.data);
+                $('#spb-confirm-modal').hide();
+            }
+        },
+        error: function(xhr, status, error) {
+            alert('An error occurred: ' + error);
+            $('#spb-confirm-modal').hide();
         }
+    });
+}
         
         // Perform Bulk Action
         function performBulkAction(action, keyIds) {
@@ -544,23 +554,74 @@
             });
         }
         
-        // Show Secret Key Modal (for regenerated secrets)
         function showSecretKeyModal(data) {
-            var modal = $('#spb-key-modal');
-            $('#spb-generated-key').val(data.secret_key);
-            $('#spb-secret-key-section').show();
-            
-            // Create cURL example
-            var curlExample = 'curl -X POST \\\n' +
-                '  -H "Content-Type: application/json" \\\n' +
-                '  -H "X-API-Key: [YOUR_API_KEY]" \\\n' +
-                '  -H "X-API-Signature: ' + data.secret_key + '" \\\n' +
-                '  -d \'{"pages":[{"title":"Example Page","content":"Page content"}]}\' \\\n' +
-                '  "' + window.location.origin + '/wp-json/pagebuilder/v1/create-pages"';
-            
-            $('#spb-curl-example').text(curlExample);
-            modal.show();
-        }
+    var modal = $('#spb-key-modal');
+    
+    // Update modal title
+    $('#spb-confirm-title').text('New API Keys Generated');
+    
+    // Create content for modal
+    var content = '<div class="spb-alert spb-alert-warning">' +
+        '<p><span class="dashicons dashicons-warning"></span> ' +
+        'Save these keys securely. You will not be able to see them again.</p>' +
+        '</div>' +
+        
+        '<div class="spb-form-group">' +
+        '<label>New API Key:</label>' +
+        '<div class="spb-key-display">' +
+        '<input type="text" id="spb-new-api-key" class="regular-text spb-key-input" value="' + data.api_key + '" readonly>' +
+        '<button type="button" class="button spb-copy-key-btn" data-clipboard-target="#spb-new-api-key">' +
+        '<span class="dashicons dashicons-clipboard"></span> Copy' +
+        '</button>' +
+        '</div>' +
+        '</div>' +
+        
+        '<div class="spb-form-group">' +
+        '<label>New Secret Key:</label>' +
+        '<div class="spb-key-display">' +
+        '<input type="text" id="spb-new-secret-key" class="regular-text spb-key-input" value="' + data.secret_key + '" readonly>' +
+        '<button type="button" class="button spb-copy-key-btn" data-clipboard-target="#spb-new-secret-key">' +
+        '<span class="dashicons dashicons-clipboard"></span> Copy' +
+        '</button>' +
+        '</div>' +
+        '</div>' +
+        
+        '<div class="spb-curl-example">' +
+        '<h4>New cURL Example:</h4>' +
+        '<pre class="spb-code-block">' +
+        'curl -X POST \\' + '\n' +
+        '  -H "Content-Type: application/json" \\' + '\n' +
+        '  -H "X-API-Key: ' + data.api_key + '" \\' + '\n' +
+        '  -H "X-API-Secret: ' + data.secret_key + '" \\' + '\n' +
+        '  -d \'{"pages":[{"title":"Example Page","content":"Page content"}]}\' \\' + '\n' +
+        '  "' + window.location.origin + '/wp-json/pagebuilder/v1/create-pages"' +
+        '</pre>' +
+        '</div>';
+    
+    $('#spb-confirm-message').html(content);
+    
+    // Show the modal
+    $('#spb-confirm-modal').show();
+    
+    // Re-attach copy button handlers
+    $(document).on('click', '.spb-copy-key-btn', function(e) {
+        e.preventDefault();
+        var target = $(this).data('clipboard-target');
+        var $input = $(target);
+        
+        $input.select();
+        document.execCommand('copy');
+        
+        // Show feedback
+        var $button = $(this);
+        var originalHTML = $button.html();
+        $button.html('<span class="dashicons dashicons-yes"></span> Copied!');
+        
+        setTimeout(function() {
+            $button.html(originalHTML);
+        }, 2000);
+    });
+}
         
     });
     

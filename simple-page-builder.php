@@ -40,6 +40,185 @@ spl_autoload_register(function ($class) {
     }
 });
 
+// =====================================================================
+// DIRECT AJAX REGISTRATION - WORKS EVEN IF OTHER CLASSES FAIL
+// =====================================================================
+add_action('wp_ajax_spb_revoke_api_key', 'spb_direct_revoke_api_key');
+add_action('wp_ajax_spb_delete_api_key', 'spb_direct_delete_api_key');
+add_action('wp_ajax_spb_test_direct', 'spb_direct_test');
+add_action('wp_ajax_spb_generate_api_key', 'spb_direct_generate_api_key');
+add_action('wp_ajax_spb_regenerate_secret', 'spb_direct_regenerate_secret');
+
+function spb_direct_test() {
+    error_log('Direct test AJAX called');
+    wp_send_json_success('Direct AJAX is working!');
+}
+
+function spb_direct_generate_api_key() {
+    // Handle generate via AJAX if needed
+    wp_send_json_error('Generate via AJAX not implemented');
+}
+// In simple-page-builder.php, replace spb_direct_regenerate_secret() with:
+function spb_direct_regenerate_secret() {
+    error_log('Direct regenerate secret AJAX called');
+    
+    // Basic validation
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'spb_admin_nonce')) {
+        wp_send_json_error('Security check failed');
+    }
+    
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Permission denied');
+    }
+    
+    $key_id = isset($_POST['key_id']) ? intval($_POST['key_id']) : 0;
+    
+    if (!$key_id) {
+        wp_send_json_error('Invalid key ID');
+    }
+    
+    global $wpdb;
+    $table_name = $wpdb->prefix . SPB_TABLE_API_KEYS;
+    
+    // First, get the existing key details
+    $existing_key = $wpdb->get_row($wpdb->prepare(
+        "SELECT key_name, expires_at, rate_limit_hourly, permissions, user_id 
+         FROM $table_name WHERE id = %d",
+        $key_id
+    ));
+    
+    if (!$existing_key) {
+        wp_send_json_error('Key not found');
+    }
+    
+    // Use your SPB_Api_Auth class to generate a new key pair
+    require_once SPB_PLUGIN_DIR . 'includes/class-api-auth.php';
+    
+    // Generate new API key pair
+    $key_pair = SPB_Api_Auth::generate_api_key_pair();
+    
+    // Create new encryption key instance to encrypt the new API key
+    $keys_manager = SPB_Api_Keys_Manager::get_instance();
+    
+    // Use reflection to access private method, or better: add a public method
+    $encrypted_key = $keys_manager->encrypt_api_key($key_pair['public_key']);
+    
+    // Update ALL key data in database
+    $result = $wpdb->update(
+        $table_name,
+        array(
+            'api_key_hash' => $key_pair['public_key_hash'],
+            'api_key_encrypted' => $encrypted_key,
+            'secret_key_hash' => $key_pair['secret_key_hash'],
+            'last_used' => NULL, // Reset last used
+            'request_count' => 0, // Reset request count
+            'updated_at' => current_time('mysql')
+        ),
+        array('id' => $key_id),
+        array('%s', '%s', '%s', '%s', '%d', '%s'),
+        array('%d')
+    );
+    
+    if ($result !== false) {
+        wp_send_json_success(array(
+            'message' => 'API Key and Secret regenerated successfully',
+            'api_key' => $key_pair['public_key'],
+            'secret_key' => $key_pair['secret_key'],
+            'key_id' => $key_id,
+            'key_name' => $existing_key->key_name
+        ));
+    } else {
+        wp_send_json_error('Failed to regenerate keys: ' . $wpdb->last_error);
+    }
+}
+
+function spb_direct_revoke_api_key() {
+    error_log('Direct revoke AJAX called');
+    
+    // Basic validation
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'spb_admin_nonce')) {
+        wp_die('0'); // Return 0 for security failure
+    }
+    
+    if (!current_user_can('manage_options')) {
+        wp_die('0'); // Return 0 for permission failure
+    }
+    
+    $key_id = isset($_POST['key_id']) ? intval($_POST['key_id']) : 0;
+    
+    if (!$key_id) {
+        wp_die('0'); // Return 0 for invalid input
+    }
+    
+    // Simple database update
+    global $wpdb;
+    $table_name = $wpdb->prefix . SPB_TABLE_API_KEYS; // FIXED: Use constant
+    
+    $result = $wpdb->update(
+        $table_name,
+        array('status' => 'revoked'),
+        array('id' => $key_id),
+        array('%s'),
+        array('%d')
+    );
+    
+    if ($result !== false) {
+        wp_send_json_success(array(
+            'message' => 'API key revoked successfully',
+            'key_id' => $key_id,
+            'redirect_url' => add_query_arg(array(
+                'page' => 'simple-page-builder',
+                'tab' => 'api-keys',
+                'revoked' => '1'
+            ), admin_url('tools.php'))
+        ));
+    } else {
+        wp_die('0'); // Return 0 for database error
+    }
+}
+
+function spb_direct_delete_api_key() {
+    error_log('Direct delete AJAX called');
+    
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'spb_admin_nonce')) {
+        wp_die('0');
+    }
+    
+    if (!current_user_can('manage_options')) {
+        wp_die('0');
+    }
+    
+    $key_id = isset($_POST['key_id']) ? intval($_POST['key_id']) : 0;
+    
+    if (!$key_id) {
+        wp_die('0');
+    }
+    
+    global $wpdb;
+    $table_name = $wpdb->prefix . SPB_TABLE_API_KEYS; // FIXED: Use constant
+    
+    $result = $wpdb->delete(
+        $table_name,
+        array('id' => $key_id),
+        array('%d')
+    );
+    
+    if ($result) {
+        wp_send_json_success(array(
+            'message' => 'API key deleted successfully',
+            'key_id' => $key_id,
+            'redirect_url' => add_query_arg(array(
+                'page' => 'simple-page-builder',
+                'tab' => 'api-keys',
+                'deleted' => '1'
+            ), admin_url('tools.php'))
+        ));
+    } else {
+        wp_die('0');
+    }
+}
+// =====================================================================
+
 // Main plugin class
 class SimplePageBuilder {
     

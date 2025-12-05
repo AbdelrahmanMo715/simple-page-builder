@@ -402,6 +402,49 @@ class SPB_Api_Keys_UI {
                 </div>
             </div>
         </div>
+        <!-- Add this after the existing confirmation modal -->
+<div id="spb-key-modal" class="spb-modal" style="display: none;">
+    <div class="spb-modal-content spb-modal-large">
+        <div class="spb-modal-header">
+            <h3><?php _e('New Secret Key Generated', 'simple-page-builder'); ?></h3>
+            <button type="button" class="spb-modal-close">&times;</button>
+        </div>
+        <div class="spb-modal-body">
+            <div class="spb-alert spb-alert-warning">
+                <p>
+                    <span class="dashicons dashicons-warning"></span>
+                    <?php _e('Save this secret key securely. You will not be able to see it again.', 'simple-page-builder'); ?>
+                </p>
+            </div>
+            
+            <div class="spb-form-group">
+                <label><?php _e('New Secret Key:', 'simple-page-builder'); ?></label>
+                <div class="spb-key-display">
+                    <input type="text" 
+                           id="spb-generated-key" 
+                           class="regular-text spb-key-input" 
+                           readonly>
+                    <button type="button" 
+                            class="button spb-copy-key-btn" 
+                            data-clipboard-target="#spb-generated-key">
+                        <span class="dashicons dashicons-clipboard"></span> <?php _e('Copy', 'simple-page-builder'); ?>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="spb-secret-key-section" style="display: none;">
+                <h4><?php _e('Usage Instructions:', 'simple-page-builder'); ?></h4>
+                <p><?php _e('Use this secret key for request signing in the X-API-Signature header.', 'simple-page-builder'); ?></p>
+                <pre id="spb-curl-example" class="spb-code-block"></pre>
+            </div>
+        </div>
+        <div class="spb-modal-footer">
+            <button type="button" class="button button-primary spb-modal-close">
+                <?php _e('Close', 'simple-page-builder'); ?>
+            </button>
+        </div>
+    </div>
+</div>
         <?php
     }
     
@@ -503,11 +546,11 @@ class SPB_Api_Keys_UI {
                     
                     <div class="spb-key-actions">
                         <?php if ($key->status === 'active'): ?>
-                            <button type="button" 
+                            <!-- <button type="button" 
                                     class="button button-primary spb-regenerate-secret-btn"
                                     data-key-id="<?php echo esc_attr($key->id); ?>">
                                 <?php _e('Regenerate Secret Key', 'simple-page-builder'); ?>
-                            </button>
+                            </button> -->
                             <button type="button" 
                                     class="button button-warning spb-revoke-btn"
                                     data-key-id="<?php echo esc_attr($key->id); ?>"

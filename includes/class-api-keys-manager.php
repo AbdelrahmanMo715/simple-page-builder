@@ -13,10 +13,10 @@ class SPB_Api_Keys_Manager {
     private function __construct() {
         // Handle admin actions via AJAX or direct POST
         // add_action('admin_init', array($this, 'handle_admin_actions'));
-        add_action('wp_ajax_spb_generate_api_key', array($this, 'ajax_generate_api_key'));
-        add_action('wp_ajax_spb_revoke_api_key', array($this, 'ajax_revoke_api_key'));
-        add_action('wp_ajax_spb_delete_api_key', array($this, 'ajax_delete_api_key'));
-        add_action('wp_ajax_spb_regenerate_secret', array($this, 'ajax_regenerate_secret'));
+        // add_action('wp_ajax_spb_generate_api_key', array($this, 'ajax_generate_api_key'));
+        // add_action('wp_ajax_spb_revoke_api_key', array($this, 'ajax_revoke_api_key'));
+        // add_action('wp_ajax_spb_delete_api_key', array($this, 'ajax_delete_api_key'));
+        // add_action('wp_ajax_spb_regenerate_secret', array($this, 'ajax_regenerate_secret'));
         add_action('spb_daily_cleanup', array($this, 'cleanup_expired_keys'));
     }
     
